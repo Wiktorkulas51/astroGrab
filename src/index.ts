@@ -1,7 +1,7 @@
 import type { AstroIntegration } from 'astro';
-import { astroGrabInstrumentation } from './vite/plugin';
-import { astroGrabMiddleware } from './server/middleware';
-import type { GrabOptions } from './types';
+import { astroGrabInstrumentation } from './vite/plugin.js';
+import { astroGrabMiddleware } from './server/middleware.js';
+import type { GrabOptions } from './types.js';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 

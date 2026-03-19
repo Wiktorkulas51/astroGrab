@@ -23,12 +23,20 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
       return null;
     },
     async transform(code: string, id: string) {
-      if (!id.endsWith('.astro')) return;
+      if (!id.endsWith('.astro')) return null;
 
       const s = new MagicString(code);
       const relativePath = path.relative(process.cwd(), id).replace(/\\/g, '/');
 
-      // Tag identification regex
+      // 1. Identify and skip script/style blocks
+      const blocksToSkip: [number, number][] = [];
+      const blockRegex = /<(script|style)[^>]*>[\s\S]*?<\/\1>/gi;
+      let blockMatch;
+      while ((blockMatch = blockRegex.exec(code)) !== null) {
+        blocksToSkip.push([blockMatch.index, blockMatch.index + blockMatch[0].length]);
+      }
+
+      // 2. Tag identification regex
       const tagRegex = /<([a-zA-Z0-9-]+)(?![^>]*\sdata-astro-grab=)(?=[^>]*>)/g;
       let match;
 
@@ -36,8 +44,13 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
         const index = match.index;
         const tagName = match[1];
 
+        // Check if we are inside a skip block
+        if (blocksToSkip.some(([s, e]) => index >= s && index < e)) {
+          continue;
+        }
+
         // Skip non-UI tags
-        if (['script', 'style', 'head', 'html', 'body', 'link', 'meta'].includes(tagName.toLowerCase())) {
+        if (['script', 'style', 'head', 'html', 'body', 'link', 'meta', '!doctype'].includes(tagName.toLowerCase())) {
           continue;
         }
 
@@ -60,4 +73,3 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
     }
   };
 }
-

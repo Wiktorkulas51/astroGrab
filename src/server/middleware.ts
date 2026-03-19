@@ -1,6 +1,6 @@
 import type { ViteDevServer } from 'vite';
-import { getSnippet } from '../utils/snippet';
-import type { GrabOptions } from '../types';
+import { getSnippet } from '../utils/snippet.js';
+import type { GrabOptions } from '../types.js';
 
 export function astroGrabMiddleware(server: ViteDevServer, options: GrabOptions) {
   server.middlewares.use(async (req, res, next) => {
