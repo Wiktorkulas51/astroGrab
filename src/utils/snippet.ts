@@ -9,11 +9,14 @@ export async function getSnippet(
   rootPath: string
 ): Promise<SnippetResponse> {
   // Resolve and sanitize path
-  const fullPath = path.resolve(rootPath, filePath);
+  const normalize = (p: string) => p.replace(/\\/g, '/');
+  const fullPath = normalize(path.resolve(rootPath, filePath));
+  const normalizedRoot = normalize(rootPath);
   
-  if (!fullPath.startsWith(rootPath)) {
-    throw new Error('Access denied: Path is outside of project root.');
+  if (!fullPath.startsWith(normalizedRoot)) {
+    throw new Error(`Access denied: Path is outside of project root.\nRoot: ${normalizedRoot}\nPath: ${fullPath}`);
   }
+
 
   const content = await fs.readFile(fullPath, 'utf8');
   const lines = content.split('\n');

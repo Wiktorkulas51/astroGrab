@@ -17,14 +17,16 @@
     Object.assign(overlay.style, {
       position: 'fixed',
       pointerEvents: 'none',
-      zIndex: '2147483647', // Max possible z-index
+      zIndex: '2147483647',
       border: '2px solid #3b82f6',
       backgroundColor: 'rgba(59, 130, 246, 0.15)',
-      transition: 'opacity 0.1s ease',
+      transition: 'top 0.15s cubic-bezier(0.19, 1, 0.22, 1), left 0.15s cubic-bezier(0.19, 1, 0.22, 1), width 0.15s cubic-bezier(0.19, 1, 0.22, 1), height 0.15s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.1s ease',
       display: 'none',
       borderRadius: '4px',
-      boxShadow: '0 0 15px rgba(59, 130, 246, 0.6)'
+      boxShadow: '0 0 15px rgba(59, 130, 246, 0.6)',
+      opacity: '0'
     });
+
     
     const label = document.createElement('div');
     label.id = 'astro-grab-label';
@@ -123,38 +125,71 @@
     }
   }, { passive: true });
 
-  window.addEventListener('click', async (e) => {
-    if (!active || !currentTarget) return;
+  window.addEventListener('mousedown', async (e) => {
+    if (!active) {
+      console.log('[Astro Grab] Click ignored: Alt not active');
+      return;
+    }
+    if (!currentTarget) {
+      console.log('[Astro Grab] Click ignored: No target');
+      return;
+    }
+
+    console.log('[Astro Grab] Mousedown detected on:', currentTarget);
 
     e.preventDefault();
     e.stopPropagation();
 
     const grabInfo = currentTarget.getAttribute('data-astro-grab');
-    if (!grabInfo) return;
+    if (!grabInfo) {
+      console.log('[Astro Grab] No data-astro-grab attribute found');
+      return;
+    }
 
     const [file, line] = grabInfo.split(':');
+    const label = overlay?.querySelector('#astro-grab-label') as HTMLElement;
 
     try {
+      console.log(`[Astro Grab] Fetching snippet for ${file}:${line}`);
       const resp = await fetch(`/__astro-grab/snippet?file=${encodeURIComponent(file)}&line=${line}`);
-      if (!resp.ok) throw new Error('Failed to fetch snippet');
+      
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(`Server error: ${text}`);
+      }
       
       const data = await resp.json();
-      await navigator.clipboard.writeText(data.snippet);
+      console.log('[Astro Grab] Snippet received, writing to clipboard...');
       
-      const label = overlay?.querySelector('#astro-grab-label') as HTMLElement;
+      await navigator.clipboard.writeText(data.result || data.snippet);
+      console.log('[Astro Grab] SUCCESS: Copied to clipboard');
+      
       if (label) {
         const prevText = label.textContent;
-        label.textContent = 'COPIED TO CLIPBOARD';
+        const prevBg = label.style.backgroundColor;
+        label.textContent = '✓ COPIED TO CLIPBOARD';
         label.style.backgroundColor = '#10b981';
+        label.style.transform = 'scale(1.1)';
+        
         setTimeout(() => {
           label.textContent = prevText;
-          label.style.backgroundColor = '#3b82f6';
-        }, 1200);
+          label.style.backgroundColor = prevBg;
+          label.style.transform = 'scale(1)';
+        }, 1500);
       }
-    } catch (err) {
-      console.error('[Astro Grab]', err);
+    } catch (err: any) {
+      console.error('[Astro Grab] ERROR:', err);
+      if (label) {
+        label.textContent = '❌ ERROR COPYING';
+        label.style.backgroundColor = '#ef4444';
+        setTimeout(() => {
+          label.style.backgroundColor = '#3b82f6';
+        }, 2000);
+      }
     }
-  });
+  }, { capture: true });
+
+
 
   // Cleanup on page transitions (optional but cleaner)
   document.addEventListener('astro:before-preparation', () => {

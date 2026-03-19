@@ -15,15 +15,23 @@ export function astroGrabMiddleware(server: ViteDevServer, options: GrabOptions)
           return res.end('Missing file parameter');
         }
 
-        const snippet = await getSnippet(
+        const data = await getSnippet(
           file,
           line,
           options.contextLines || 5,
           server.config.root
         );
 
+        // Apply template
+        const template = options.template || '{{snippet}}';
+        const result = template
+          .replace(/{{snippet}}/g, data.snippet)
+          .replace(/{{file}}/g, data.file)
+          .replace(/{{line}}/g, String(data.targetLine))
+          .replace(/{{language}}/g, data.language);
+
         res.setHeader('Content-Type', 'application/json');
-        return res.end(JSON.stringify(snippet));
+        return res.end(JSON.stringify({ ...data, result }));
       } catch (error: any) {
         res.statusCode = 500;
         return res.end(error?.message || 'Internal Server Error');

@@ -11,8 +11,19 @@ export function astroGrab(options: GrabOptions = {}): AstroIntegration {
   const {
     enabled = true,
     contextLines = 5,
-    template = '{{snippet}}'
+    template = `### PROŚBA O ZMIANĘ DLA @AI
+
+**Plik:** {{file}}
+**Lokalizacja:** Linia {{line}}
+
+\`\`\`astro
+{{snippet}}
+\`\`\`
+
+---
+**Instrukcja:** `
   } = options;
+
 
   return {
     name: 'astro-grab',
