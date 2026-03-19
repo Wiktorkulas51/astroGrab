@@ -21,15 +21,16 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
         return await fs.readFile(clientScriptPath, 'utf8');
       }
 
-      // Check for .astro files but ignore node_modules and ignore if they have queries
-      if (!id.endsWith('.astro') || id.includes('node_modules')) return null;
-
+      // Check for .astro files but ignore node_modules
+      // Also ignore vite internal requests (queries)
+      if (!id.endsWith('.astro') || id.includes('node_modules') || id.includes('?')) {
+        return null;
+      }
 
       try {
         const rawCode = await fs.readFile(id, 'utf8');
         const s = new MagicString(rawCode);
         const relativePath = path.relative(process.cwd(), id).replace(/\\/g, '/');
-
 
         const rangesToSkip: [number, number][] = [];
         
@@ -42,7 +43,6 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
 
         // 1. Script/Style blocks
         const blockRegex = /<(script|style|textarea)[^>]*>[\s\S]*?<\/\1>/gi;
-
         let blockMatch;
         while ((blockMatch = blockRegex.exec(rawCode)) !== null) {
           rangesToSkip.push([blockMatch.index, blockMatch.index + blockMatch[0].length]);
@@ -58,7 +58,7 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
         // 3. Blacklist of system tags
         const blacklist = new Set([
           'script', 'style', 'head', 'html', 'body', 'link', 'meta', '!doctype', 
-          'fragment', 'title', 'base', 'noscript', 'template', '---'
+          'fragment', 'title', 'base', 'noscript', 'template'
         ]);
 
         const tagRegex = /<([a-zA-Z][a-zA-Z0-9-:]*)/g;
@@ -69,7 +69,7 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
           const tagName = match[1];
 
           // Skip if inside restricted ranges
-          if (rangesToSkip.some(([s, e]) => index >= s && index < e)) continue;
+          if (rangesToSkip.some(([start, end]) => index >= start && index < end)) continue;
           if (blacklist.has(tagName.toLowerCase())) continue;
 
           // Count lines precisely
@@ -85,11 +85,10 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
 
         return {
           code: s.toString(),
-          map: s.generateMap({ hires: true })
+          map: s.generateMap({ hires: true, source: id })
         };
       } catch (e) {
-        console.error('[Astro Grab] Load error:', e);
-        return null;
+        return null; // Let others handle it if we fail
       }
     }
   };
