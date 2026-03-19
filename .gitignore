@@ -1,0 +1,10 @@
+node_modules
+dist
+.astro
+.netlify
+.vercel
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.shnpm
+.DS_Store
