@@ -45,57 +45,34 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
         rangesToSkip.push([commentMatch.index, commentMatch.index + commentMatch[0].length]);
       }
 
-      // 2. Safe Whitelist of tags to instrument
-      const safeTags = new Set([
-        'div', 'section', 'main', 'article', 'aside', 'nav', 'header', 'footer',
-        'a', 'button', 'p', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-        'img', 'ul', 'ol', 'li', 'footer', 'canvas', 'svg', 'form', 'input', 'label'
+      // 2. Blacklist of system tags
+      const blacklist = new Set([
+        'script', 'style', 'head', 'html', 'body', 'link', 'meta', '!doctype', 
+        'fragment', 'title', 'base', 'noscript', 'template'
       ]);
 
-      // 3. Tag identification
-      // We look for <tagName followed by space or >
-      const tagRegex = /<([a-zA-Z0-9-]+)(?=\s|>)/g;
+      const tagRegex = /<([a-zA-Z0-9-]+)/g;
       let match;
 
       while ((match = tagRegex.exec(code)) !== null) {
         const index = match.index;
         const tagName = match[1];
 
-        // Skip if inside restricted ranges
-        if (rangesToSkip.some(([s, e]) => index >= s && index < e)) {
-          continue;
-        }
+        if (rangesToSkip.some(([s, e]) => index >= s && index < e)) continue;
 
-        const lowerName = tagName.toLowerCase();
-        
-        // ONLY instrument safe tags or PascalCase components
-        const isPascalCase = /^[A-Z]/.test(tagName);
-        const isSafeTag = safeTags.has(lowerName);
+        if (blacklist.has(tagName.toLowerCase())) continue;
+        if (!/^[a-zA-Z]/.test(tagName)) continue;
 
-        if (!isSafeTag && !isPascalCase) {
-          continue;
-        }
-
-        // Final safety: definitely skip system tags even if they start with uppercase (unlikely)
-        if (['script', 'style', 'head', 'html', 'body', 'link', 'meta', '!doctype', 'fragment'].includes(lowerName)) {
-          continue;
-        }
-
-        // Calculate line number
         const lines = code.substring(0, index).split('\n');
         const line = lines.length;
-        
-        // Inject data-astro-grab attribute
         const insertPos = index + 1 + tagName.length;
-        
-        // Double check we don't have it already
-        const around = code.substring(index, index + 200);
-        if (around.includes('data-astro-grab=')) {
-          continue;
-        }
 
-        s.appendLeft(insertPos, ` data-astro-grab="${relativePath}:${line}"`);
+        // Force a space before the attribute
+        s.appendLeft(insertPos, ` data-astro-grab="${relativePath}:${line}" `);
       }
+
+
+
 
       if (s.hasChanged()) {
         return {

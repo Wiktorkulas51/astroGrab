@@ -1,8 +1,5 @@
-// src/client.ts
 (function () {
   if (typeof window === 'undefined') return;
-
-  // Prevent multiple initializations (Astro View Transitions)
   if ((window as any).__astro_grab_initialized) return;
   (window as any).__astro_grab_initialized = true;
 
@@ -11,8 +8,15 @@
   let overlay: HTMLDivElement | null = null;
 
   function createOverlay() {
-    if (overlay) return;
+    // If it exists in DOM, we're good
+    if (document.getElementById('astro-grab-overlay')) {
+      overlay = document.getElementById('astro-grab-overlay') as HTMLDivElement;
+      return;
+    }
+
     overlay = document.createElement('div');
+
+
     overlay.id = 'astro-grab-overlay';
     Object.assign(overlay.style, {
       position: 'fixed',
@@ -159,10 +163,19 @@
       }
       
       const data = await resp.json();
-      console.log('[Astro Grab] Snippet received, writing to clipboard...');
+      console.log('[Astro Grab] Snippet received, processing template...');
       
-      await navigator.clipboard.writeText(data.result || data.snippet);
+      let finalResult = data.result || data.snippet;
+      
+      // Inject real DOM if template asks for it
+      if (finalResult.includes('{{dom}}')) {
+        const dom = currentTarget.outerHTML;
+        finalResult = finalResult.replace(/{{dom}}/g, dom);
+      }
+      
+      await navigator.clipboard.writeText(finalResult);
       console.log('[Astro Grab] SUCCESS: Copied to clipboard');
+
       
       if (label) {
         const prevText = label.textContent;
@@ -191,10 +204,15 @@
 
 
 
-  // Cleanup on page transitions (optional but cleaner)
+  // Cleanup and re-init on page transitions
   document.addEventListener('astro:before-preparation', () => {
     active = false;
     hideOverlay();
   });
+
+  document.addEventListener('astro:page-load', () => {
+    createOverlay();
+  });
 })();
+
 

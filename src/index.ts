@@ -16,12 +16,19 @@ export function astroGrab(options: GrabOptions = {}): AstroIntegration {
 **Plik:** {{file}}
 **Lokalizacja:** Linia {{line}}
 
+**Struktura DOM:**
+\`\`\`html
+{{dom}}
+\`\`\`
+
+**Kod źródłowy:**
 \`\`\`astro
 {{snippet}}
 \`\`\`
 
 ---
 **Instrukcja:** `
+
   } = options;
 
 
