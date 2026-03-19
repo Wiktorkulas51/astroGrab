@@ -33,8 +33,16 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
 
         const rangesToSkip: [number, number][] = [];
         
+        // 0. Astro Frontmatter (--- ... ---)
+        const frontmatterRegex = /^---\s*[\s\S]*?^---/m;
+        const fmMatch = frontmatterRegex.exec(rawCode);
+        if (fmMatch) {
+          rangesToSkip.push([fmMatch.index, fmMatch.index + fmMatch[0].length]);
+        }
+
         // 1. Script/Style blocks
         const blockRegex = /<(script|style|textarea)[^>]*>[\s\S]*?<\/\1>/gi;
+
         let blockMatch;
         while ((blockMatch = blockRegex.exec(rawCode)) !== null) {
           rangesToSkip.push([blockMatch.index, blockMatch.index + blockMatch[0].length]);
