@@ -38,7 +38,9 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
         const frontmatterRegex = /^---\s*[\s\S]*?^---/m;
         const fmMatch = frontmatterRegex.exec(rawCode);
         if (fmMatch) {
-          rangesToSkip.push([fmMatch.index, fmMatch.index + fmMatch[0].length]);
+          const start = fmMatch.index;
+          const end = start + fmMatch[0].length;
+          rangesToSkip.push([start, end]);
         }
 
         // 1. Script/Style blocks
@@ -53,6 +55,13 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
         let commentMatch;
         while ((commentMatch = commentRegex.exec(rawCode)) !== null) {
           rangesToSkip.push([commentMatch.index, commentMatch.index + commentMatch[0].length]);
+        }
+
+        // 2b. JS-style Comments in Template { /* ... */ }
+        const jsCommentRegex = /\{\/\*[\s\S]*?\*\/\}/g;
+        let jsCommentMatch;
+        while ((jsCommentMatch = jsCommentRegex.exec(rawCode)) !== null) {
+          rangesToSkip.push([jsCommentMatch.index, jsCommentMatch.index + jsCommentMatch[0].length]);
         }
 
         // 3. Blacklist of system tags
@@ -80,7 +89,8 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
           }
           
           const insertPos = index + 1 + tagName.length;
-          s.appendLeft(insertPos, ` data-ag-line="${relativePath}:${lineCount}" `);
+          const encodedPath = encodeURIComponent(relativePath);
+          s.appendLeft(insertPos, ` data-ag-line="${encodedPath}:${lineCount}" `);
         }
 
         return {

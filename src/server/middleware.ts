@@ -7,7 +7,8 @@ export function astroGrabMiddleware(server: ViteDevServer, options: GrabOptions)
     if (req.url?.startsWith('/__astro-grab/snippet')) {
       try {
         const url = new URL(req.url, `http://${req.headers.host}`);
-        const file = url.searchParams.get('file');
+        const rawFile = url.searchParams.get('file');
+        const file = rawFile ? decodeURIComponent(rawFile) : null;
         const line = parseInt(url.searchParams.get('line') || '1', 10);
 
         if (!file) {
