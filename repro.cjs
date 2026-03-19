@@ -59,12 +59,11 @@ while ((match = tagRegex.exec(rawCode)) !== null) {
   s.appendLeft(insertPos, ` data-ag-line="${relativePath}:${lineCount}" `);
 }
 
-const lines = s.toString().split('\n');
-console.log('Line 31 Raw:', JSON.stringify(lines[30]));
+const transformed = s.toString();
+const lines = transformed.split('\n');
+console.log('TRANSFORMED LINE 31:');
+console.log(lines[30]);
 console.log('Line 31 Length:', lines[30].length);
-if (lines[30].length >= 69) {
-  console.log('Char at 69:', lines[30][68]);
-  console.log('Around 69:', lines[30].substring(60, 80));
-} else {
-  console.log('Line 31 is shorter than 69 chars');
-}
+console.log('Index of "src":', lines[30].indexOf('src'));
+console.log('Character at 69:', lines[30][68]);
+console.log('Segment around 69:', lines[30].substring(60, 80));
