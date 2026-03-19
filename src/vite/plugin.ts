@@ -30,10 +30,6 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
         const s = new MagicString(rawCode);
         const relativePath = path.relative(process.cwd(), id).replace(/\\/g, '/');
 
-        // DEBUG: Verify raw code instrumentation
-        if (id.includes('kontakt.astro')) {
-          await fs.writeFile('astro-grab-debug.log', `[RAW-LOAD] [${new Date().toISOString()}]\nID: ${id}\nCODE PREVIEW:\n${rawCode.substring(0, 1000)}`, 'utf8');
-        }
 
         const rangesToSkip: [number, number][] = [];
         

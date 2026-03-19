@@ -36,8 +36,10 @@ export function astroGrab(options: GrabOptions = {}): AstroIntegration {
     name: 'astro-grab',
     hooks: {
       'astro:config:setup': ({ updateConfig, injectScript, command }) => {
-        // Only run in dev mode unless explicitly enabled
-        if (command !== 'dev' && !enabled) return;
+        // Strictly only run in dev mode unless explicitly enabled in options
+        const shouldRun = command === 'dev' || options.enabled === true;
+        if (!shouldRun) return;
+
 
         // Path to the client script - in dev it's .ts, in prod it will be .js
         const isTS = __dirname.includes('src');
