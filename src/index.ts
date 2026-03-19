@@ -22,14 +22,15 @@ export function astroGrab(options: GrabOptions = {}): AstroIntegration {
         if (command !== 'dev' && !enabled) return;
 
         // Path to the client script - in dev it's .ts, in prod it will be .js
-        // For simplicity during development of the package itself:
-        const clientPath = path.resolve(__dirname, './client.ts');
+        const isTS = __dirname.includes('src');
+        const clientPath = path.resolve(__dirname, isTS ? './client.ts' : './client.js');
 
         updateConfig({
           vite: {
             plugins: [astroGrabInstrumentation(clientPath) as any],
           },
         });
+
 
         // Inject the client-side script via virtual module
         injectScript('page', "import 'astro-grab/client';");
