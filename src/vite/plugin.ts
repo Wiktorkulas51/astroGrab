@@ -20,70 +20,73 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
       if (id === resolvedVirtualModuleId) {
         return await fs.readFile(clientScriptPath, 'utf8');
       }
-      return null;
-    },
-    async transform(code: string, id: string) {
-      if (!id.endsWith('.astro')) return null;
 
-      const s = new MagicString(code);
-      const relativePath = path.relative(process.cwd(), id).replace(/\\/g, '/');
-
-      // 1. Identify and skip areas we should NOT touch
-      const rangesToSkip: [number, number][] = [];
-      
-      // Script and Style blocks
-      const blockRegex = /<(script|style)[^>]*>[\s\S]*?<\/\1>/gi;
-      let blockMatch;
-      while ((blockMatch = blockRegex.exec(code)) !== null) {
-        rangesToSkip.push([blockMatch.index, blockMatch.index + blockMatch[0].length]);
-      }
-
-      // HTML Comments
-      const commentRegex = /<!--[\s\S]*?-->/g;
-      let commentMatch;
-      while ((commentMatch = commentRegex.exec(code)) !== null) {
-        rangesToSkip.push([commentMatch.index, commentMatch.index + commentMatch[0].length]);
-      }
-
-      // 2. Blacklist of system tags
-      const blacklist = new Set([
-        'script', 'style', 'head', 'html', 'body', 'link', 'meta', '!doctype', 
-        'fragment', 'title', 'base', 'noscript', 'template'
-      ]);
-
-      const tagRegex = /<([a-zA-Z0-9-]+)/g;
-      let match;
-
-      while ((match = tagRegex.exec(code)) !== null) {
-        const index = match.index;
-        const tagName = match[1];
-
-        if (rangesToSkip.some(([s, e]) => index >= s && index < e)) continue;
-
-        if (blacklist.has(tagName.toLowerCase())) continue;
-        if (!/^[a-zA-Z]/.test(tagName)) continue;
-
-        const lines = code.substring(0, index).split('\n');
-        const line = lines.length;
-        const insertPos = index + 1 + tagName.length;
-
-        // Force a space before the attribute
-        s.appendLeft(insertPos, ` data-astro-grab="${relativePath}:${line}" `);
-      }
+      // Check for .astro files but ignore node_modules and ignore if they have queries
+      if (!id.endsWith('.astro') || id.includes('node_modules')) return null;
 
 
+      try {
+        const rawCode = await fs.readFile(id, 'utf8');
+        const s = new MagicString(rawCode);
+        const relativePath = path.relative(process.cwd(), id).replace(/\\/g, '/');
 
+        // DEBUG: Verify raw code instrumentation
+        if (id.includes('kontakt.astro')) {
+          await fs.writeFile('astro-grab-debug.log', `[RAW-LOAD] [${new Date().toISOString()}]\nID: ${id}\nCODE PREVIEW:\n${rawCode.substring(0, 1000)}`, 'utf8');
+        }
 
-      if (s.hasChanged()) {
+        const rangesToSkip: [number, number][] = [];
+        
+        // 1. Script/Style blocks
+        const blockRegex = /<(script|style|textarea)[^>]*>[\s\S]*?<\/\1>/gi;
+        let blockMatch;
+        while ((blockMatch = blockRegex.exec(rawCode)) !== null) {
+          rangesToSkip.push([blockMatch.index, blockMatch.index + blockMatch[0].length]);
+        }
+
+        // 2. HTML Comments
+        const commentRegex = /<!--[\s\S]*?-->/g;
+        let commentMatch;
+        while ((commentMatch = commentRegex.exec(rawCode)) !== null) {
+          rangesToSkip.push([commentMatch.index, commentMatch.index + commentMatch[0].length]);
+        }
+
+        // 3. Blacklist of system tags
+        const blacklist = new Set([
+          'script', 'style', 'head', 'html', 'body', 'link', 'meta', '!doctype', 
+          'fragment', 'title', 'base', 'noscript', 'template', '---'
+        ]);
+
+        const tagRegex = /<([a-zA-Z][a-zA-Z0-9-:]*)/g;
+        let match;
+
+        while ((match = tagRegex.exec(rawCode)) !== null) {
+          const index = match.index;
+          const tagName = match[1];
+
+          // Skip if inside restricted ranges
+          if (rangesToSkip.some(([s, e]) => index >= s && index < e)) continue;
+          if (blacklist.has(tagName.toLowerCase())) continue;
+
+          // Count lines precisely
+          const substring = rawCode.substring(0, index);
+          let lineCount = 1;
+          for (let i = 0; i < substring.length; i++) {
+            if (substring[i] === '\n') lineCount++;
+          }
+          
+          const insertPos = index + 1 + tagName.length;
+          s.appendLeft(insertPos, ` data-ag-line="${relativePath}:${lineCount}" `);
+        }
+
         return {
           code: s.toString(),
           map: s.generateMap({ hires: true })
         };
+      } catch (e) {
+        console.error('[Astro Grab] Load error:', e);
+        return null;
       }
-      return null;
     }
-
-
-
   };
 }

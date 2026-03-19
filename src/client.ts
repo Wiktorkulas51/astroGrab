@@ -110,7 +110,9 @@
     createOverlay();
 
     const el = e.target as HTMLElement;
-    const target = el.closest('[data-astro-grab]') as HTMLElement;
+    const target = el.closest('[data-ag-line], [data-astro-source-loc]') as HTMLElement;
+
+
 
     if (target) {
       if (currentTarget !== target) {
@@ -129,33 +131,55 @@
     }
   }, { passive: true });
 
+  // Block all interactions when active
+  const preventAll = (e: MouseEvent) => {
+    if (active) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
+  window.addEventListener('mousedown', preventAll, { capture: true });
+  window.addEventListener('mouseup', preventAll, { capture: true });
+  window.addEventListener('click', preventAll, { capture: true });
+
   window.addEventListener('mousedown', async (e) => {
-    if (!active) {
-      console.log('[Astro Grab] Click ignored: Alt not active');
-      return;
-    }
-    if (!currentTarget) {
-      console.log('[Astro Grab] Click ignored: No target');
-      return;
-    }
+    if (!active) return;
+    if (!currentTarget) return;
+
 
     console.log('[Astro Grab] Mousedown detected on:', currentTarget);
 
     e.preventDefault();
     e.stopPropagation();
 
-    const grabInfo = currentTarget.getAttribute('data-astro-grab');
-    if (!grabInfo) {
-      console.log('[Astro Grab] No data-astro-grab attribute found');
+    let file = '';
+    let line = '';
+    
+    // Priority: 1. Native Astro source (100% accurate) 2. Our ag-line
+    const astroLoc = currentTarget.getAttribute('data-astro-source-loc');
+    const astroFile = currentTarget.getAttribute('data-astro-source-file');
+    const agLine = currentTarget.getAttribute('data-ag-line');
+
+    if (astroLoc && astroFile) {
+      file = astroFile;
+      line = astroLoc.split(':')[0];
+    } else if (agLine) {
+      [file, line] = agLine.split(':');
+    }
+
+    if (!file || !line) {
+      console.log('[Astro Grab] Could not determine source location', { agLine, astroLoc, astroFile });
       return;
     }
 
-    const [file, line] = grabInfo.split(':');
+
     const label = overlay?.querySelector('#astro-grab-label') as HTMLElement;
 
     try {
       console.log(`[Astro Grab] Fetching snippet for ${file}:${line}`);
       const resp = await fetch(`/__astro-grab/snippet?file=${encodeURIComponent(file)}&line=${line}`);
+
       
       if (!resp.ok) {
         const text = await resp.text();
@@ -169,11 +193,32 @@
       
       // Inject real DOM if template asks for it
       if (finalResult.includes('{{dom}}')) {
-        const dom = currentTarget.outerHTML;
+        // Create a clean clone for AI context
+        const clone = currentTarget.cloneNode(true) as HTMLElement;
+        
+        // 1. Remove our tracking and Astro's source attributes
+        const toRemove = ['data-ag-line', 'data-astro-source-loc', 'data-astro-source-file', 'data-astro-grab'];
+        
+        const cleanEl = (el: Element) => {
+          toRemove.forEach(attr => el.removeAttribute(attr));
+          // Also remove CID attributes
+          for (let i = el.attributes.length - 1; i >= 0; i--) {
+            if (el.attributes[i].name.startsWith('data-astro-cid')) {
+              el.removeAttribute(el.attributes[i].name);
+            }
+          }
+        };
+
+        cleanEl(clone);
+        clone.querySelectorAll('*').forEach(cleanEl);
+
+        
+        const dom = clone.outerHTML;
         finalResult = finalResult.replace(/{{dom}}/g, dom);
       }
       
       await navigator.clipboard.writeText(finalResult);
+
       console.log('[Astro Grab] SUCCESS: Copied to clipboard');
 
       
