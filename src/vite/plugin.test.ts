@@ -45,6 +45,7 @@ const x = 1;
 ---
 <div class={width<threshold ? "small" : "large"}>
   { items.length<max && <span>Too many</span> }
+  { items.length < threshold && <div>Space before</div> }
 </div>
     `.trim();
     const result = await plugin.transform(code, 'src/test.astro');

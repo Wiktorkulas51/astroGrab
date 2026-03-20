@@ -82,12 +82,24 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
           // Skip if inside restricted ranges
           if (rangesToSkip.some(([start, end]) => index >= start && index < end)) continue;
 
-          // Heuristic to avoid comparisons like 'a<b' or '1<2'
-          // A tag in Astro/JSX must not be preceded by a word character or digit without space
-          if (index > 0) {
-            const prevChar = rawCode[index - 1];
+          // Robust check for comparisons (a < b, a <b, etc.)
+          // Skip if preceded by a JS identifier, number, or closing delimiter unless it's a keyword
+          let i = index - 1;
+          while (i >= 0 && /\s/.test(rawCode[i])) i--;
+          
+          if (i >= 0) {
+            const prevChar = rawCode[i];
             if (/[a-zA-Z0-9_$\])]/.test(prevChar)) {
-              continue;
+              // Extract the word before the '<' to check for JSX-starting keywords
+              let wordEnd = i;
+              let wordStart = i;
+              while (wordStart > 0 && /[a-zA-Z0-9_$]/.test(rawCode[wordStart - 1])) wordStart--;
+              const word = rawCode.substring(wordStart, wordEnd + 1);
+              
+              const keywords = new Set(['return', 'yield', 'await', 'default', 'case', 'delete', 'void', 'typeof']);
+              if (!keywords.has(word)) {
+                continue; // It's a comparison (e.g. count < threshold)
+              }
             }
           }
 
