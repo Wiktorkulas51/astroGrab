@@ -20,7 +20,9 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
       if (id === resolvedVirtualModuleId) {
         return await fs.readFile(clientScriptPath, 'utf8');
       }
-
+      return null;
+    },
+    async transform(rawCode, id) {
       // Check for .astro files but ignore node_modules
       // Also ignore vite internal requests (queries)
       if (!id.endsWith('.astro') || id.includes('node_modules') || id.includes('?')) {
@@ -28,9 +30,9 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
       }
 
       try {
-        const rawCode = await fs.readFile(id, 'utf8');
         const s = new MagicString(rawCode);
         const relativePath = path.relative(process.cwd(), id).replace(/\\/g, '/');
+
 
         const rangesToSkip: [number, number][] = [];
         
@@ -90,8 +92,9 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
           
           const insertPos = index + 1 + tagName.length;
           const encodedPath = encodeURIComponent(relativePath);
-          s.appendLeft(insertPos, ` data-ag-line="${encodedPath}:${lineCount}" `);
+          s.appendLeft(insertPos, ` data-ag-line="${encodedPath}:${lineCount}"`);
         }
+
 
         return {
           code: s.toString(),
