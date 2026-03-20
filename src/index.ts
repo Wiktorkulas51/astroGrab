@@ -33,7 +33,7 @@ export function astroGrab(options: GrabOptions = {}): AstroIntegration {
 
 
   return {
-    name: '@wiktorkulas51/astro-grab',
+    name: '@hiimwiktor/astro-grab',
     hooks: {
       'astro:config:setup': ({ updateConfig, injectScript, command }) => {
         // Strictly only run in dev mode unless explicitly enabled in options
@@ -53,7 +53,7 @@ export function astroGrab(options: GrabOptions = {}): AstroIntegration {
 
 
         // Inject the client-side script via virtual module
-        injectScript('page', "import '@wiktorkulas51/astro-grab/client';");
+        injectScript('page', "import '@hiimwiktor/astro-grab/client';");
 
       },
       'astro:server:setup': ({ server }) => {

@@ -37,4 +37,24 @@ describe('astroGrabInstrumentation', () => {
     expect(result.code).toContain('<span data-ag-line="src%2Ftest.astro:2">');
 
   });
+
+  it('should skip comparison operators in JS expressions', async () => {
+    const code = `
+---
+const x = 1;
+---
+<div class={width<threshold ? "small" : "large"}>
+  { items.length<max && <span>Too many</span> }
+</div>
+    `.trim();
+    const result = await plugin.transform(code, 'src/test.astro');
+    
+    // Should NOT match comparisons
+    expect(result.code).not.toContain('threshold data-ag-line');
+    expect(result.code).not.toContain('max data-ag-line');
+    
+    // Should still match the span and div
+    expect(result.code).toContain('<div data-ag-line');
+    expect(result.code).toContain('<span data-ag-line');
+  });
 });

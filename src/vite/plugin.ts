@@ -3,7 +3,7 @@ import MagicString from 'magic-string';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 
-const virtualModuleId = '@wiktorkulas51/astro-grab/client';
+const virtualModuleId = '@hiimwiktor/astro-grab/client';
 const resolvedVirtualModuleId = '\0' + virtualModuleId;
 
 export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
@@ -81,6 +81,16 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
 
           // Skip if inside restricted ranges
           if (rangesToSkip.some(([start, end]) => index >= start && index < end)) continue;
+
+          // Heuristic to avoid comparisons like 'a<b' or '1<2'
+          // A tag in Astro/JSX must not be preceded by a word character or digit without space
+          if (index > 0) {
+            const prevChar = rawCode[index - 1];
+            if (/[a-zA-Z0-9_$\])]/.test(prevChar)) {
+              continue;
+            }
+          }
+
           if (blacklist.has(tagName.toLowerCase())) continue;
 
           // Count lines precisely
