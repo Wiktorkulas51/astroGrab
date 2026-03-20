@@ -1,8 +1,9 @@
 {
-  "name": "astrograb",
+  "name": "astro-grab",
   "version": "1.0.0",
   "type": "module",
-  "description": "",
+  "description": "Visual element targeting for Astro. Hold Alt and click to copy source code snippets directly to your clipboard.",
+
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -14,9 +15,22 @@
     "dev": "astro dev",
     "build": "tsc"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "astro-plugin",
+    "astro-integration",
+    "withastro",
+    "devtools",
+    "dev-overlay",
+    "tooling"
+  ],
+  "author": "Wiktorkulas51",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Wiktorkulas51/astroGrab"
+  },
+  "homepage": "https://github.com/Wiktorkulas51/astroGrab#readme",
+
   "dependencies": {
     "astro": "^6.0.6",
     "magic-string": "^0.30.21",
