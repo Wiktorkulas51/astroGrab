@@ -1,5 +1,6 @@
 {
-  "name": "astro-grab",
+  "name": "@wiktorkulas51/astro-grab",
+
   "version": "1.0.0",
   "type": "module",
   "description": "Visual element targeting for Astro. Hold Alt and click to copy source code snippets directly to your clipboard.",

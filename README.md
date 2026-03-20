@@ -22,7 +22,7 @@ Designed specifically to provide **instant context for AI agents** (like Gemini,
 ## Installation
 
 ```bash
-npm install astro-grab
+npm install @wiktorkulas51/astro-grab
 ```
 
 ---
@@ -33,7 +33,8 @@ Add the integration to your `astro.config.mjs`:
 
 ```javascript
 import { defineConfig } from 'astro/config';
-import { astroGrab } from 'astro-grab';
+import { astroGrab } from '@wiktorkulas51/astro-grab';
+
 
 export default defineConfig({
   integrations: [

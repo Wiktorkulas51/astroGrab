@@ -3,7 +3,7 @@ import MagicString from 'magic-string';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 
-const virtualModuleId = 'astro-grab/client';
+const virtualModuleId = '@wiktorkulas51/astro-grab/client';
 const resolvedVirtualModuleId = '\0' + virtualModuleId;
 
 export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
