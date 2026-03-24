@@ -5,20 +5,100 @@ import fs from 'node:fs/promises';
 
 const virtualModuleId = '@hiimwiktor/astro-grab/client';
 const resolvedVirtualModuleId = '\0' + virtualModuleId;
+const helperVirtualIds = new Map([
+  ['clipboard', '@hiimwiktor/astro-grab/client/clipboard'],
+  ['payload-extractor', '@hiimwiktor/astro-grab/client/payload-extractor'],
+  ['payload-formatter', '@hiimwiktor/astro-grab/client/payload-formatter'],
+  ['payload-sanitizer', '@hiimwiktor/astro-grab/client/payload-sanitizer'],
+  ['runtime-config', '@hiimwiktor/astro-grab/client/runtime-config'],
+  ['target-resolver', '@hiimwiktor/astro-grab/client/target-resolver'],
+  ['dom-types', '@hiimwiktor/astro-grab/client/dom-types'],
+  ['types', '@hiimwiktor/astro-grab/types'],
+]);
 
 export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
+  const clientDir = path.dirname(clientScriptPath);
+  const helperExt = clientScriptPath.endsWith('.js') ? '.js' : '.ts';
+  const relativeHelperImports: Record<string, string> = {
+    './client/clipboard.js': helperVirtualIds.get('clipboard')!,
+    './client/payload-extractor.js': helperVirtualIds.get('payload-extractor')!,
+    './client/payload-formatter.js': helperVirtualIds.get('payload-formatter')!,
+    './client/payload-sanitizer.js': helperVirtualIds.get('payload-sanitizer')!,
+    './client/runtime-config.js': helperVirtualIds.get('runtime-config')!,
+    './client/target-resolver.js': helperVirtualIds.get('target-resolver')!,
+    './client/dom-types.js': helperVirtualIds.get('dom-types')!,
+    './types.js': helperVirtualIds.get('types')!,
+    '../types.js': helperVirtualIds.get('types')!,
+  };
+
   return {
     name: 'astro-grab-instrumentation',
     enforce: 'pre',
-    resolveId(id) {
+    resolveId(id, importer) {
       if (id === virtualModuleId) {
         return resolvedVirtualModuleId;
+      }
+      if ([...helperVirtualIds.values()].includes(id)) {
+        return '\0' + id;
+      }
+      if (importer === resolvedVirtualModuleId && relativeHelperImports[id]) {
+        return '\0' + relativeHelperImports[id];
       }
       return null;
     },
     async load(id) {
       if (id === resolvedVirtualModuleId) {
-        return await fs.readFile(clientScriptPath, 'utf8');
+        return rewriteImports(await fs.readFile(clientScriptPath, 'utf8'), relativeHelperImports);
+      }
+      if (id === '\0' + helperVirtualIds.get('clipboard')) {
+        return fs.readFile(path.join(clientDir, 'client', `clipboard${helperExt}`), 'utf8');
+      }
+      if (id === '\0' + helperVirtualIds.get('payload-extractor')) {
+        return rewriteImports(
+          await fs.readFile(path.join(clientDir, 'client', `payload-extractor${helperExt}`), 'utf8'),
+          {
+            './dom-types.js': helperVirtualIds.get('dom-types')!,
+            './payload-sanitizer.js': helperVirtualIds.get('payload-sanitizer')!,
+          }
+        );
+      }
+      if (id === '\0' + helperVirtualIds.get('payload-formatter')) {
+        return rewriteImports(
+          await fs.readFile(path.join(clientDir, 'client', `payload-formatter${helperExt}`), 'utf8'),
+          {
+            './payload-extractor.js': helperVirtualIds.get('payload-extractor')!,
+          }
+        );
+      }
+      if (id === '\0' + helperVirtualIds.get('payload-sanitizer')) {
+        return rewriteImports(
+          await fs.readFile(path.join(clientDir, 'client', `payload-sanitizer${helperExt}`), 'utf8'),
+          {
+            './dom-types.js': helperVirtualIds.get('dom-types')!,
+          }
+        );
+      }
+      if (id === '\0' + helperVirtualIds.get('runtime-config')) {
+        return rewriteImports(
+          await fs.readFile(path.join(clientDir, 'client', `runtime-config${helperExt}`), 'utf8'),
+          {
+            '../types.js': helperVirtualIds.get('types')!,
+          }
+        );
+      }
+      if (id === '\0' + helperVirtualIds.get('target-resolver')) {
+        return rewriteImports(
+          await fs.readFile(path.join(clientDir, 'client', `target-resolver${helperExt}`), 'utf8'),
+          {
+            './dom-types.js': helperVirtualIds.get('dom-types')!,
+          }
+        );
+      }
+      if (id === '\0' + helperVirtualIds.get('dom-types')) {
+        return fs.readFile(path.join(clientDir, 'client', `dom-types${helperExt}`), 'utf8');
+      }
+      if (id === '\0' + helperVirtualIds.get('types')) {
+        return fs.readFile(path.join(clientDir, `types${helperExt}`), 'utf8');
       }
       return null;
     },
@@ -83,14 +163,17 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
           if (rangesToSkip.some(([start, end]) => index >= start && index < end)) continue;
 
           // Robust check for comparisons (a < b, a <b, etc.)
-          // Skip if preceded by a JS identifier, number, or closing delimiter unless it's a keyword
+          // Skip if preceded by characters that are not part of a tag start sequence
           let i = index - 1;
           while (i >= 0 && /\s/.test(rawCode[i])) i--;
           
           if (i >= 0) {
             const prevChar = rawCode[i];
-            if (/[a-zA-Z0-9_$\])]/.test(prevChar)) {
-              // Extract the word before the '<' to check for JSX-starting keywords
+            // Characters that can immediately precede a JSX/Astro tag
+            const startOfTagChars = new Set(['(', '[', '{', ',', ':', '=', '&', '|', '?', '>', ';']);
+            
+            if (!startOfTagChars.has(prevChar)) {
+              // Not a standard tag start, check if it's a keyword like 'return' or 'yield'
               let wordEnd = i;
               let wordStart = i;
               while (wordStart > 0 && /[a-zA-Z0-9_$]/.test(rawCode[wordStart - 1])) wordStart--;
@@ -98,7 +181,7 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
               
               const keywords = new Set(['return', 'yield', 'await', 'default', 'case', 'delete', 'void', 'typeof']);
               if (!keywords.has(word)) {
-                continue; // It's a comparison (e.g. count < threshold)
+                continue; // It's a comparison or something else (like a string "a"<b)
               }
             }
           }
@@ -114,7 +197,8 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
           
           const insertPos = index + 1 + tagName.length;
           const encodedPath = encodeURIComponent(relativePath);
-          s.appendLeft(insertPos, ` data-ag-line="${encodedPath}:${lineCount}"`);
+          // Added trailing space to ensure it doesn't merge with the next attribute/bracket
+          s.appendLeft(insertPos, ` data-ag-line="${encodedPath}:${lineCount}" `);
         }
 
 
@@ -127,4 +211,17 @@ export function astroGrabInstrumentation(clientScriptPath: string): Plugin {
       }
     }
   };
+}
+
+function rewriteImports(code: string, replacements: Record<string, string>): string {
+  let rewritten = code;
+  for (const [from, to] of Object.entries(replacements)) {
+    rewritten = rewritten.replace(new RegExp(`from\\s+['\"]${escapeRegExp(from)}['\"]`, 'g'), `from '${to}'`);
+    rewritten = rewritten.replace(new RegExp(`import\\s+['\"]${escapeRegExp(from)}['\"]`, 'g'), `import '${to}'`);
+  }
+  return rewritten;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

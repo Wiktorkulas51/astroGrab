@@ -9,8 +9,8 @@ describe('astroGrabInstrumentation', () => {
     const result = await plugin.transform(code, 'src/test.astro');
 
     expect(result.code).toContain('data-ag-line="src%2Ftest.astro:1"');
-    expect(result.code).toContain('<div data-ag-line="src%2Ftest.astro:1">');
-    expect(result.code).toContain('<span data-ag-line="src%2Ftest.astro:1">');
+    expect(result.code).toContain('<div data-ag-line="src%2Ftest.astro:1" >');
+    expect(result.code).toContain('<span data-ag-line="src%2Ftest.astro:1" >');
 
   });
 
@@ -33,8 +33,8 @@ describe('astroGrabInstrumentation', () => {
     `.trim();
     const result = await plugin.transform(code, 'src/test.astro');
 
-    expect(result.code).toContain('<div data-ag-line="src%2Ftest.astro:1">');
-    expect(result.code).toContain('<span data-ag-line="src%2Ftest.astro:2">');
+    expect(result.code).toContain('<div data-ag-line="src%2Ftest.astro:1" >');
+    expect(result.code).toContain('<span data-ag-line="src%2Ftest.astro:2" >');
 
   });
 
@@ -57,5 +57,11 @@ const x = 1;
     // Should still match the span and div
     expect(result.code).toContain('<div data-ag-line');
     expect(result.code).toContain('<span data-ag-line');
+  });
+
+  it('resolves helper imports from the virtual client module', async () => {
+    const resolved = await plugin.resolveId?.('./client/clipboard.js', '\0@hiimwiktor/astro-grab/client');
+
+    expect(resolved).toBe('\0@hiimwiktor/astro-grab/client/clipboard');
   });
 });

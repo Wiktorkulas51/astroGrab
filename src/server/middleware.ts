@@ -19,7 +19,7 @@ export function astroGrabMiddleware(server: ViteDevServer, options: GrabOptions)
         const data = await getSnippet(
           file,
           line,
-          options.contextLines || 5,
+          options.contextLines ?? 5,
           server.config.root
         );
 
@@ -41,4 +41,3 @@ export function astroGrabMiddleware(server: ViteDevServer, options: GrabOptions)
     return next();
   });
 }
-
