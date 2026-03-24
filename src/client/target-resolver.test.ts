@@ -135,6 +135,19 @@ describe('pickBestTargetCandidate', () => {
     expect(resolveTargetFromPoint(doc, 165, 155, {} as any)).toBe(child);
   });
 
+  it('prefers the deepest point-hit descendant for gaps between controls', () => {
+    const buttonA = createNode('A', 180, 360, 120, 44);
+    const buttonB = createNode('A', 320, 360, 140, 44);
+    const buttonRow = createNode('DIV', 160, 340, 360, 80, [buttonA, buttonB]);
+    const content = createNode('DIV', 120, 180, 520, 280, [buttonRow]);
+    const section = createNode('SECTION', 80, 80, 720, 520, [content], true);
+    const doc = {
+      elementsFromPoint: () => [section],
+    } as any;
+
+    expect(resolveTargetFromPoint(doc, 310, 378, {} as any)).toBe(buttonRow);
+  });
+
   it('finds the nearest source-bearing element when the current wrapper has none', () => {
     const button = createNode('BUTTON', 140, 40, 120, 36, [], true);
     const section = createNode('SECTION', 80, 60, 320, 160, [button]);

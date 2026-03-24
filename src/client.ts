@@ -138,6 +138,7 @@ import { findSourceAnchor, moveTargetByDepth, resolveTargetFromPoint } from './c
   function flashStatus(text: string, backgroundColor: string) {
     const label = overlay?.querySelector('#astro-grab-label') as HTMLElement | null;
     if (!label) return;
+    if (overlay) overlay.dataset.lastError = '';
     const previousText = label.textContent;
     const previousBackground = label.style.backgroundColor;
     label.textContent = text;
@@ -150,7 +151,10 @@ import { findSourceAnchor, moveTargetByDepth, resolveTargetFromPoint } from './c
     }, 1400);
   }
 
-  function setErrorStatus() {
+  function setErrorStatus(error?: unknown) {
+    if (overlay) {
+      overlay.dataset.lastError = error instanceof Error ? error.message : String(error ?? 'Unknown error');
+    }
     flashStatus('ERROR COPYING', '#ef4444');
   }
 
@@ -208,8 +212,8 @@ import { findSourceAnchor, moveTargetByDepth, resolveTargetFromPoint } from './c
     event.stopPropagation();
     try {
       await copyCurrentTarget();
-    } catch {
-      setErrorStatus();
+    } catch (error) {
+      setErrorStatus(error);
     }
   }, { capture: true });
 

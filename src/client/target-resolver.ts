@@ -15,6 +15,7 @@ export interface TargetCandidate {
   matchesPreferSelector?: boolean;
   textLength?: number;
   attributeCount?: number;
+  interactiveChildCount?: number;
 }
 
 export interface TargetHeuristics {
@@ -65,6 +66,7 @@ export function scoreTargetCandidate(
   if (heuristics.preferSemantic && candidate.isSemantic) score += 20;
   if (heuristics.preferTextContent && (candidate.textLength ?? 0) > 0) score += 8;
   if (heuristics.ignoreGenericWrappers && candidate.isGenericWrapper) score -= 25;
+  if (candidate.isGenericWrapper && (candidate.interactiveChildCount ?? 0) >= 2) score += 22;
   if ((candidate.attributeCount ?? 0) > 3) score += 4;
   if (candidate.pointHit) score += 35;
   if (typeof candidate.distanceToPoint === 'number') {
@@ -177,6 +179,10 @@ function buildCandidate(
     matchesPreferSelector,
     textLength: (element.textContent ?? '').trim().length,
     attributeCount: element.attributes.length,
+    interactiveChildCount: Array.from(element.children).filter((child) => {
+      const childTag = child.tagName.toLowerCase();
+      return isInteractiveTag(childTag) || hasInteractiveAttributes(child as DomLikeElement);
+    }).length,
   };
 }
 
@@ -186,11 +192,18 @@ function refineTargetWithinSubtree(
   y: number,
   heuristics: TargetHeuristics = {}
 ): DomLikeElement {
-  const descendants = collectDescendants(element, 4);
+  const descendants = collectDescendants(element, 6);
   if (!descendants.length) return element;
 
   const rootCandidate = buildCandidate(element, 0, false, false, x, y);
   rootCandidate.pointHit = (rootCandidate.distanceToPoint ?? Number.POSITIVE_INFINITY) === 0;
+  const descendantPointHits = descendants.some((descendant) => {
+    const rect = descendant.getBoundingClientRect?.();
+    return rect ? pointInRect(x, y, rect) : false;
+  });
+  if (descendantPointHits) {
+    rootCandidate.hasSource = false;
+  }
   const candidates: TargetCandidate[] = [rootCandidate];
   for (const descendant of descendants) {
     const candidate = buildCandidate(descendant, 1, false, false, x, y);
@@ -198,6 +211,22 @@ function refineTargetWithinSubtree(
     if (candidate.pointHit || (candidate.distanceToPoint ?? Number.POSITIVE_INFINITY) <= 32) {
       candidates.push(candidate);
     }
+  }
+
+  const pointHitDescendants = candidates.filter((candidate) => candidate.pointHit && candidate.element !== element);
+  if (pointHitDescendants.length) {
+    const bestPointHit = pointHitDescendants.sort((left, right) => {
+      const depthDelta = (right.depth ?? 0) - (left.depth ?? 0);
+      if (depthDelta !== 0) return depthDelta;
+
+      const leftArea = left.area ?? Number.POSITIVE_INFINITY;
+      const rightArea = right.area ?? Number.POSITIVE_INFINITY;
+      if (leftArea !== rightArea) return leftArea - rightArea;
+
+      return scoreTargetCandidate(right, { ...defaultHeuristics, ...heuristics }) - scoreTargetCandidate(left, { ...defaultHeuristics, ...heuristics });
+    })[0];
+
+    return bestPointHit?.element ?? element;
   }
 
   const best = pickBestTargetCandidate(candidates, heuristics);
@@ -225,6 +254,10 @@ function distanceToRect(x: number, y: number, rect: DOMRect | DOMRectReadOnly): 
   const dx = x < rect.left ? rect.left - x : x > rect.right ? x - rect.right : 0;
   const dy = y < rect.top ? rect.top - y : y > rect.bottom ? y - rect.bottom : 0;
   return Math.hypot(dx, dy);
+}
+
+function pointInRect(x: number, y: number, rect: DOMRect | DOMRectReadOnly): boolean {
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
 
 function hasSourceAttributes(element: DomLikeElement): boolean {

@@ -1,11 +1,8 @@
 {
   "name": "@hiimwiktor/astro-grab",
-
-
   "version": "1.0.0",
   "type": "module",
   "description": "Visual element targeting for Astro. Hold Alt and click to copy source code snippets directly to your clipboard.",
-
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -15,7 +12,8 @@
   "scripts": {
     "test": "vitest run",
     "dev": "astro dev",
-    "build": "tsc"
+    "build": "tsc",
+    "qa:headless": "node scripts/headless-targeting-qa.mjs"
   },
   "keywords": [
     "astro-plugin",
@@ -32,7 +30,6 @@
     "url": "https://github.com/Wiktorkulas51/astroGrab"
   },
   "homepage": "https://github.com/Wiktorkulas51/astroGrab#readme",
-
   "dependencies": {
     "astro": "^6.0.6",
     "magic-string": "^0.30.21",
@@ -41,6 +38,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
+    "playwright-core": "^1.58.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   }

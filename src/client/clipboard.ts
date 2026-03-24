@@ -1,7 +1,11 @@
 export async function copyToClipboard(text: string): Promise<void> {
   if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Fall back to the legacy path when clipboard permissions are unavailable.
+    }
   }
 
   const textarea = document.createElement('textarea');

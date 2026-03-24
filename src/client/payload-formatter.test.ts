@@ -23,6 +23,7 @@ describe('formatGrabPrompt', () => {
     expect(output).toContain('SOURCE');
     expect(output).toContain('SNIPPET');
     expect(output).toContain('INSTRUCTION');
+    expect((output.match(/\bINSTRUCTION\b/g) ?? []).length).toBe(1);
     expect(output).not.toContain('outerHTML');
   });
 
