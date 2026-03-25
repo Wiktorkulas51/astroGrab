@@ -33,6 +33,15 @@ describe('pickBestTargetCandidate', () => {
     expect(target?.tagName).toBe('ARTICLE');
   });
 
+  it('prefers heading elements over generic wrappers when both are visible', () => {
+    const target = pickBestTargetCandidate([
+      { tagName: 'DIV', depth: 0, area: 96000, hasSource: true, isGenericWrapper: true },
+      { tagName: 'H1', depth: 1, area: 18000, hasSource: true, isSemantic: true, textLength: 24 },
+    ]);
+
+    expect(target?.tagName).toBe('H1');
+  });
+
   it('prefers the deeper sensible child over a wrapper when scores are otherwise close', () => {
     const target = pickBestTargetCandidate([
       { tagName: 'DIV', depth: 0, area: 120000, hasSource: true, isGenericWrapper: true },
@@ -154,6 +163,19 @@ describe('pickBestTargetCandidate', () => {
     const main = createNode('MAIN', 0, 0, 800, 500, [section]);
 
     expect(findSourceAnchor(main)).toBe(button);
+  });
+
+  it('keeps the current element when it already has source metadata', () => {
+    const button = createNode('BUTTON', 140, 40, 120, 36, [], true);
+
+    expect(findSourceAnchor(button)).toBe(button);
+  });
+
+  it('prefers a more specific source-bearing descendant over a source-bearing wrapper', () => {
+    const button = createNode('BUTTON', 140, 40, 120, 36, [], true);
+    const wrapper = createNode('DIV', 100, 100, 360, 220, [button], true);
+
+    expect(findSourceAnchor(wrapper)).toBe(button);
   });
 });
 

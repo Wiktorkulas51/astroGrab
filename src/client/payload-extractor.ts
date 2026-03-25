@@ -41,7 +41,7 @@ export function extractPromptPayload(
     computedStyles,
     dom,
     source,
-    instruction: 'Edit the smallest source node that controls this element.',
+    instruction: '',
   };
 }
 

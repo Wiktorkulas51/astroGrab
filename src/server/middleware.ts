@@ -10,6 +10,9 @@ export function astroGrabMiddleware(server: ViteDevServer, options: GrabOptions)
         const rawFile = url.searchParams.get('file');
         const file = rawFile ? decodeURIComponent(rawFile) : null;
         const line = parseInt(url.searchParams.get('line') || '1', 10);
+        const tagName = url.searchParams.get('tagName') || undefined;
+        const id = url.searchParams.get('id') || undefined;
+        const className = url.searchParams.get('className') || undefined;
 
         if (!file) {
           res.statusCode = 400;
@@ -20,7 +23,8 @@ export function astroGrabMiddleware(server: ViteDevServer, options: GrabOptions)
           file,
           line,
           options.contextLines ?? 5,
-          server.config.root
+          server.config.root,
+          { tagName, id, className }
         );
 
         // Apply template

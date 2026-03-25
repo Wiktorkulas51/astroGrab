@@ -120,17 +120,60 @@ export function moveTargetByDepth(element: DomLikeElement, direction: -1 | 1): D
 export function findSourceAnchor(element: DomLikeElement | null): DomLikeElement | null {
   if (!element) return null;
 
-  let current: DomLikeElement | null = element;
+  const descendants = collectDescendants(element, 4).filter(hasSourceAttributes);
+  if (descendants.length) {
+    const candidates = descendants.map((descendant) => buildCandidate(descendant, 1, false, false));
+    return pickBestSourceAnchorCandidate(candidates)?.element ?? descendants[0] ?? element;
+  }
+
+  if (hasSourceAttributes(element)) {
+    return element;
+  }
+
+  let current: DomLikeElement | null = element.parentElement;
   while (current) {
     if (hasSourceAttributes(current)) return current;
     current = current.parentElement;
   }
 
-  const descendants = collectDescendants(element, 4).filter(hasSourceAttributes);
-  if (!descendants.length) return null;
+  return null;
+}
 
-  const candidates = descendants.map((descendant) => buildCandidate(descendant, 0, false, false));
-  return pickBestTargetCandidate(candidates)?.element ?? descendants[0] ?? null;
+function pickBestSourceAnchorCandidate(candidates: TargetCandidate[]): TargetCandidate | null {
+  let best: TargetCandidate | null = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+
+  for (const candidate of candidates) {
+    if (!candidate.hasSource) continue;
+    const score = scoreSourceAnchorCandidate(candidate);
+    if (score > bestScore) {
+      bestScore = score;
+      best = candidate;
+    }
+  }
+
+  return best;
+}
+
+function scoreSourceAnchorCandidate(candidate: TargetCandidate): number {
+  let score = 0;
+
+  score += (candidate.depth ?? 0) * 5;
+  if (candidate.pointHit) score += 30;
+  if (candidate.matchesPreferSelector) score += 20;
+  if (candidate.isInteractive) score += 20;
+  if (candidate.isSemantic) score += 12;
+  if (!candidate.isGenericWrapper) score += 10;
+  if ((candidate.textLength ?? 0) > 0) score += 6;
+  if ((candidate.attributeCount ?? 0) > 3) score += 3;
+  if (typeof candidate.distanceToPoint === 'number') {
+    score -= Math.min(candidate.distanceToPoint / 8, 25);
+  }
+  if (candidate.area && Number.isFinite(candidate.area)) {
+    score -= Math.min(Math.sqrt(candidate.area) / 30, 25);
+  }
+
+  return score;
 }
 
 function collectTargetCandidates(
@@ -274,7 +317,29 @@ function isInteractiveTag(tagName: string): boolean {
 }
 
 function isSemanticTag(tagName: string): boolean {
-  return ['article', 'aside', 'figure', 'footer', 'header', 'main', 'nav', 'section', 'table', 'ul', 'ol', 'li', 'p'].includes(tagName);
+  return [
+    'article',
+    'aside',
+    'blockquote',
+    'figcaption',
+    'figure',
+    'footer',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'header',
+    'main',
+    'nav',
+    'ol',
+    'p',
+    'section',
+    'table',
+    'ul',
+    'li',
+  ].includes(tagName);
 }
 
 function isGenericWrapperTag(tagName: string): boolean {

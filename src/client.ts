@@ -90,14 +90,14 @@ import { findSourceAnchor, moveTargetByDepth, resolveTargetFromPoint } from './c
 
   function readSourceInfo(element: { getAttribute(name: string): string | null } | null): { file: string; line: number } | null {
     if (!element) return null;
-    const astroLoc = element.getAttribute('data-astro-source-loc');
-    const astroFile = element.getAttribute('data-astro-source-file');
     const agLine = element.getAttribute('data-ag-line');
-    if (astroLoc && astroFile) return { file: astroFile, line: Number.parseInt(astroLoc.split(':')[0] || '1', 10) };
     if (agLine) {
       const [file, line] = agLine.split(':');
       if (file && line) return { file: decodeURIComponent(file), line: Number.parseInt(line, 10) };
     }
+    const astroLoc = element.getAttribute('data-astro-source-loc');
+    const astroFile = element.getAttribute('data-astro-source-file');
+    if (astroLoc && astroFile) return { file: astroFile, line: Number.parseInt(astroLoc.split(':')[0] || '1', 10) };
     return null;
   }
 
@@ -111,15 +111,17 @@ import { findSourceAnchor, moveTargetByDepth, resolveTargetFromPoint } from './c
 
   async function copyCurrentTarget() {
     if (!currentTarget) return;
-    const sourceTarget = findSourceAnchor(currentTarget);
-    const source = readSourceInfo(sourceTarget ?? currentTarget);
+    const sourceTarget = findSourceAnchor(currentTarget) ?? currentTarget;
+    const source = readSourceInfo(sourceTarget);
     if (!source) return;
 
-    const response = await fetch(`/__astro-grab/snippet?file=${encodeURIComponent(source.file)}&line=${source.line}`);
+    const response = await fetch(
+      `/__astro-grab/snippet?file=${encodeURIComponent(source.file)}&line=${source.line}&tagName=${encodeURIComponent(sourceTarget.tagName.toLowerCase())}&id=${encodeURIComponent(sourceTarget.id)}&className=${encodeURIComponent(sourceTarget.className)}`
+    );
     if (!response.ok) throw new Error(await response.text());
     const data = await response.json();
 
-    const payload = extractPromptPayload(currentTarget, {
+    const payload = extractPromptPayload(sourceTarget, {
       file: data.file,
       line: data.targetLine,
       snippet: data.snippet,

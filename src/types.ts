@@ -35,6 +35,9 @@ export interface GrabOptions {
 export interface SnippetRequest {
   file: string;
   line: number;
+  tagName?: string;
+  id?: string;
+  className?: string;
 }
 
 export interface SnippetResponse {

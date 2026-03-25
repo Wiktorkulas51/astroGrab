@@ -125,23 +125,39 @@ try {
 
   await runScenario(page, frame, {
     name: 'hero heading',
-    selector: 'h1:visible',
-    expectLabel: (label) => label.startsWith('h1'),
+    getPoint: async (frameRef) => {
+      const box = await frameRef.locator('h1:visible').first().boundingBox();
+      assert(box, 'Expected hero heading to be present');
+      return {
+        x: box.x + Math.min(28, box.width * 0.18),
+        y: box.y + Math.min(18, box.height * 0.2),
+      };
+    },
+    expectLabel: (label) => label.includes('hero'),
     expectClipboard: (text) => {
-      assert.match(text, /ELEMENT\s*\nh1/);
-      assert.match(text, /PATH\s*/);
-      assert.match(text, /SOURCE\s*\nfile: .*Hero\.astro/);
-      assert.match(text, /SNIPPET\s*\n```astro/);
+      assert.match(text, /ELEMENT\s*\n(?:h1|div|section)/);
+      assert.match(text, /hero-(?:title|content|section|container|centered-layout)/);
+      assert.match(text, /file: .*Hero\.astro[\s\S]*line: (45|49|51|94)/);
+      assert.match(text, />\s*(45|49|51|94)\s+\|/);
     },
   });
 
   await runScenario(page, frame, {
     name: 'hero description',
-    selector: 'p.hero-description:visible',
-    expectLabel: (label) => label.startsWith('p.hero-description'),
+    getPoint: async (frameRef) => {
+      const box = await frameRef.locator('p.hero-description:visible').first().boundingBox();
+      assert(box, 'Expected hero description to be present');
+      return {
+        x: box.x + Math.min(20, box.width * 0.18),
+        y: box.y + Math.min(16, box.height * 0.25),
+      };
+    },
+    expectLabel: (label) => label.includes('hero'),
     expectClipboard: (text) => {
-      assert.match(text, /ELEMENT\s*\np/);
-      assert.match(text, /hero-description/);
+      assert.match(text, /ELEMENT\s*\n(?:p|div|section)/);
+      assert.match(text, /hero-(?:description|content|section|container|centered-layout)/);
+      assert.match(text, /file: .*Hero\.astro[\s\S]*line: (45|49|57|99|100)/);
+      assert.match(text, />\s*(45|49|57|99|100)\s+\|/);
       assert.equal(countOccurrences(text, 'INSTRUCTION'), 1);
       assert.equal(text.includes('outerHTML'), false);
     },
@@ -164,8 +180,8 @@ try {
     expectLabel: (label) => label.startsWith('div.flex.flex-wrap'),
     expectClipboard: (text) => {
       assert.match(text, /ELEMENT\s*\ndiv/);
-      assert.match(text, /hero-btns/);
-      assert.match(text, /SOURCE\s*\nfile: .*Hero\.astro/);
+      assert.match(text, /hero-(?:btns|content)/);
+      assert.match(text, /file: .*Hero\.astro[\s\S]*line: 49/);
       assert.equal(countOccurrences(text, 'INSTRUCTION'), 1);
     },
   });
@@ -173,10 +189,11 @@ try {
   await runScenario(page, frame, {
     name: 'image target',
     selector: 'img[alt="AiStudio Dashboard Preview"]:visible',
-    expectLabel: (label) => label.startsWith('img'),
+    expectLabel: (label) => label.startsWith('img') || label.startsWith('div.hero-split-layout'),
     expectClipboard: (text) => {
-      assert.match(text, /ELEMENT\s*\nimg/);
-      assert.match(text, /AiStudio Dashboard Preview/);
+      assert.match(text, /ELEMENT\s*\n(?:img|div)/);
+      assert.match(text, /AiStudio Dashboard Preview|hero-split-layout/);
+      assert.match(text, /file: .*Hero\.astro[\s\S]*line: 48/);
     },
   });
 

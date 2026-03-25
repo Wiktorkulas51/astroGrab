@@ -44,12 +44,15 @@ function formatStructuredPrompt(payload: PromptPayload, mode: 'compact' | 'full'
     '',
     'SNIPPET',
     '```astro',
-    payload.source.snippet,
+    renderNumberedSnippet(payload),
     '```',
     '',
-    'INSTRUCTION',
-    payload.instruction
+    'INSTRUCTION'
   );
+
+  if (payload.instruction.trim()) {
+    lines.push(payload.instruction.trim());
+  }
 
   return lines.join('\n');
 }
@@ -65,8 +68,28 @@ function renderTemplate(template: string, payload: PromptPayload): string {
     language: payload.source.language,
     line: String(payload.source.line),
     path: payload.path,
-    snippet: payload.source.snippet,
+    snippet: renderNumberedSnippet(payload),
   };
 
   return template.replace(/\{\{(\w+)\}\}/g, (_, key: string) => values[key] ?? '');
+}
+
+function renderNumberedSnippet(payload: PromptPayload): string {
+  const snippet = payload.source.snippet.trimEnd();
+  const lines = snippet.split('\n');
+  if (!payload.source.startLine || !payload.source.line) {
+    return snippet;
+  }
+
+  const startLine = payload.source.startLine;
+  const targetLine = payload.source.line;
+  const width = String(payload.source.endLine ?? startLine + lines.length - 1).length;
+
+  return lines
+    .map((line, index) => {
+      const lineNumber = startLine + index;
+      const marker = lineNumber === targetLine ? '>' : ' ';
+      return `${marker} ${String(lineNumber).padStart(width, ' ')} | ${line}`;
+    })
+    .join('\n');
 }

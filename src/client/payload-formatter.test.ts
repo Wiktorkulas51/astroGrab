@@ -10,11 +10,13 @@ describe('formatGrabPrompt', () => {
       attributes: ['id="save"', 'class="btn btn-primary"'],
       source: {
         file: 'src/components/Card.astro',
-        line: 12,
+        line: 11,
         language: 'astro',
-        snippet: '<button>Save changes</button>',
+        startLine: 10,
+        endLine: 12,
+        snippet: '<div>\n  <button>Save changes</button>\n</div>',
       },
-      instruction: 'Edit the smallest source node that controls this element.',
+      instruction: '',
     });
 
     expect(output).toContain('ELEMENT');
@@ -24,6 +26,8 @@ describe('formatGrabPrompt', () => {
     expect(output).toContain('SNIPPET');
     expect(output).toContain('INSTRUCTION');
     expect((output.match(/\bINSTRUCTION\b/g) ?? []).length).toBe(1);
+    expect(output).toContain('> 11 |   <button>Save changes</button>');
+    expect(output).not.toContain('Edit the smallest source node that controls this element.');
     expect(output).not.toContain('outerHTML');
   });
 
@@ -39,9 +43,11 @@ describe('formatGrabPrompt', () => {
           file: 'src/components/Card.astro',
           line: 12,
           language: 'astro',
+          startLine: 10,
+          endLine: 13,
           snippet: '<button>Save</button>',
         },
-        instruction: 'Edit the smallest source node that controls this element.',
+        instruction: '',
       },
       { payloadMode: 'full' }
     );

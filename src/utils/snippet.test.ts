@@ -1,30 +1,32 @@
-import { describe, it, expect, vi } from 'vitest';
-import { getSnippet } from './snippet';
-import fs from 'node:fs/promises';
+import { describe, expect, it } from 'vitest';
+import { selectSnippetTargetLine } from './snippet';
 
-vi.mock('node:fs/promises');
+describe('selectSnippetTargetLine', () => {
+  it('prefers a matching class-bearing line over an approximate frontmatter line', () => {
+    const lines = [
+      '---',
+      'const spacingMapping = {',
+      '  md: "py-20"',
+      '};',
+      '---',
+      '<section>',
+      '  <div class:list={[\'hero-content\', alignClasses]}>',
+      '    <h1 class="hero-title text-4xl">Hero</h1>',
+      '  </div>',
+      '</section>',
+    ];
 
-describe('getSnippet', () => {
-  it('should extract correct number of context lines', async () => {
-    const mockContent = '1\n2\n3\n4\n5\n6\n7\n8\n9\n10';
-    vi.mocked(fs.readFile).mockResolvedValue(mockContent);
-
-    const result = await getSnippet('test.astro', 5, 2, process.cwd());
-
-    expect(result.snippet).toContain('3\n4\n5\n6\n7');
-    expect(result.startLine).toBe(3);
-    expect(result.endLine).toBe(7);
-    expect(result.targetLine).toBe(5);
+    expect(
+      selectSnippetTargetLine(lines, 2, {
+        tagName: 'div',
+        className: 'hero-content text-center md:text-left',
+      })
+    ).toBe(7);
   });
 
-  it('should handle start of file', async () => {
-    const mockContent = '1\n2\n3\n4\n5';
-    vi.mocked(fs.readFile).mockResolvedValue(mockContent);
+  it('keeps the approximate line when no better match exists', () => {
+    const lines = ['<div>', '  <span>Label</span>', '</div>'];
 
-    const result = await getSnippet('test.astro', 1, 2, process.cwd());
-
-    expect(result.snippet).toBe('1\n2\n3');
-    expect(result.startLine).toBe(1);
-    expect(result.endLine).toBe(3);
+    expect(selectSnippetTargetLine(lines, 2, { tagName: 'span' })).toBe(2);
   });
 });
